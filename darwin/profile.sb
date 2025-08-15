@@ -1,0 +1,171 @@
+(version 1)
+
+(deny default)
+;(debug deny)
+
+(import "/System/Library/Sandbox/Profiles/bsd.sb")
+(import "/System/Library/Sandbox/Profiles/appsandbox-common.sb")
+
+;; Allow reading and executing files in the configured Java runtime.
+(allow file-read* process-exec (literal (param "java")))
+(allow file-read* (subpath (param "java_home")))
+
+;; Not including these gives warnings but don't seem to be fatal
+;(allow file-read* process-exec (subpath (param "java_home")))
+;(allow process-exec
+;  (literal "/usr/sbin/sysctl")
+;  (literal "/usr/sbin/system_profiler"))
+
+;; Allow forking -- the sandbox is preserved across forks.
+(allow process-fork)
+
+;; Allow read-only access to the assets directory.
+(allow file-read* (subpath (param "assets")))
+
+;; Allow read/write access to the `.minecraft` directory.
+(allow file-read* file-write* (subpath (param "minecraft")))
+
+;; Allow loading the Java libraries specified in the class path.
+(allow file-read* (apply literal (split-string (param "classpath") ":")))
+
+;; Allow loading native libraries.
+(allow file-read* file-map-executable (subpath (param "native_dir")))
+
+;; TODO no clue why it's needed but it causes errors when disabled
+(mobileasset)
+
+;; TODO tighten
+(allow file-read* file-write* (subpath "/private/var/folders"))
+
+;;; Audio
+
+(coreaudio-services)
+(audio-output)
+(when (equal? (param "allow_microphone") "true")
+  (audio-input))
+(allow file-read* (subpath "/Library/Audio/Plug-Ins/HAL"))
+
+;;; Networking
+
+(when (equal? (param "allow_multiplayer") "true")
+  (system-network) ; core networking APIs
+  (allow network-outbound
+    (literal "/private/var/run/mDNSResponder")
+    (remote ip))
+  (allow network-inbound (local ip)))
+
+;;; Stuff from defunct frameworks.sb
+
+;; PlugInKit
+(allow mach-lookup
+  (global-name "com.apple.pluginkit.pkd")
+  (extension "com.apple.pluginkit.plugin-service"))
+
+;; AppleEvents
+(allow mach-lookup (global-name "com.apple.coreservices.appleevents"))
+
+;; LaunchServices
+(allow mach-lookup
+ (global-name
+   "com.apple.SharedWebCredentials"
+   "com.apple.coreservices.launchservicesd"
+   "com.apple.coreservices.lsuseractivitymanager.xpc"
+   "com.apple.lsd.advertisingidentifiers"
+   "com.apple.lsd.extensions"
+   "com.apple.lsd.icons"
+   "com.apple.lsd.mapdb"
+   "com.apple.lsd.modifydb"
+   "com.apple.lsd.open"
+   "com.apple.lsd.openurl"
+   "com.apple.lsd.xpc"))
+
+;; DFRFoundation
+(allow mach-lookup
+  (global-name
+    "com.apple.touchbarserver"
+    "com.apple.touchbarserver.mig"
+    "com.apple.controlstrip"))
+
+;; AppKit
+(allow file-read*
+       (literal "/Library/Preferences/com.apple.ViewBridge.plist"))
+(allow mach-lookup
+       (global-name
+         "com.apple.ServicesTouchBarService"
+         "com.apple.appkit.touchbarlogger"
+         "com.apple.sharing.sharesheet"
+         "com.apple.sidecar-display-agent"
+         "com.apple.sidecar-relay"))
+
+;; GameController
+
+(allow mach-lookup
+       (global-name
+         "com.apple.GameController.gamecontrolleragentd"
+         "com.apple.GameController.gamecontrollerd.app"
+         "com.apple.GameController.gamecontrollerd.haptics"
+         "com.apple.GameController.gamecontrollerd"))
+(allow user-preference-read
+       (preference-domain "com.apple.GameController"))
+(allow iokit-open-user-client
+       iokit-set-properties
+       (iokit-user-client-class "AppleGCSyntheticDeviceUserClient"))
+
+;;; Everything else (mostly macOS boilerplate)
+;;; Most of it is taken from `/System/Library/Sandbox/Profiles/application.sb`
+
+(allow user-preference-read 
+  (preference-domain 
+    "com.apple.Accessibility"
+    "com.apple.SpeakSelection"
+    "com.apple.HIToolbox"
+    "com.apple.inputmethodkit"
+    "com.apple.inputsources"
+    "com.apple.speech.recognition.AppleSpeechRecognition.prefs"
+    "com.apple.speech.voice.prefs"
+    "com.apple.universalaccess"
+    "kCFPreferencesAnyApplication"
+    "pbs"
+  )
+)
+
+(allow mach-lookup
+  (local-name "com.apple.CFPasteboardClient")
+  (global-name "com.apple.CARenderServer")
+  (global-name "com.apple.CoreServices.coreservicesd")
+  (global-name "com.apple.coreservices.quarantine-resolver")
+  (global-name "com.apple.cvmsServ")
+  (global-name "com.apple.DiskArbitration.diskarbitrationd")
+  (global-name "com.apple.distributed_notifications@1v3")
+  (global-name "com.apple.distributed_notifications@Uv3")
+  (global-name "com.apple.dock.fullscreen")
+  (global-name "com.apple.dock.server")
+  (global-name "com.apple.inputanalyticsd")
+  (global-name "com.apple.inputmethodkit.getxpcendpoint")
+  (global-name "com.apple.inputmethodkit.launchagent")
+  (global-name "com.apple.inputmethodkit.launcher")
+  (global-name "com.apple.inputmethodkit.setxpcendpoint")
+  (global-name "com.apple.iohideventsystem")
+  (global-name "com.apple.pasteboard.1")
+  (global-name "com.apple.pbs.fetch_services")
+  (global-name "com.apple.spindump")
+  (global-name "com.apple.SystemConfiguration.configd")
+  (global-name "com.apple.tccd")
+  (global-name "com.apple.tccd.system")
+  (global-name "com.apple.tsm.uiserver")
+  (global-name "com.apple.uiintelligencesupport.agent")
+  (global-name "com.apple.window_proxies")
+  (global-name "com.apple.windowmanager.server")
+  (global-name "com.apple.windowserver.active")
+)
+
+(allow iokit-open
+  (iokit-user-client-class "AGXDeviceUserClient")
+  (iokit-user-client-class "IOHIDParamUserClient")
+  (iokit-user-client-class "IOGPUGLDrawableUserClient")
+  (iokit-user-client-class "IOSurfaceRootUserClient"))
+
+(allow file-read*
+  (home-subpath "/Library/Keyboard Layouts")
+  (home-subpath "/Library/Input Methods")
+)
