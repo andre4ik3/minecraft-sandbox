@@ -57,7 +57,7 @@ cd "$INST_MC_DIR" || exit 1
 
 # Other directories
 minecraft="$(realpath "$INST_MC_DIR")"
-assets="$(realpath "$INST_DIR/../..")"
+assets="$(realpath "$INST_DIR/../../assets")"
 java="$(realpath "$INST_JAVA")"
 java_home="$(realpath "$(echo "$java" | sed "s;/Contents/Home/.*;;")"/..)"
 
