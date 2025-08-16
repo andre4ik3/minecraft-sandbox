@@ -31,6 +31,11 @@
 ;; Allow loading native libraries.
 (allow file-read* file-map-executable (subpath (param "native_dir")))
 
+;; Allow loading *all* libraries, even those not specified in the class path.
+;; Needed for e.g. (Neo)Forge installers.
+(when (equal? (param "allow_all_libraries") "true")
+  (allow file-read* (subpath (param "libraries"))))
+
 ;; TODO no clue why it's needed but it causes errors when disabled
 (mobileasset)
 
